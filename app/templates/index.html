@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Music to YouTube Playlist Scanner</title>
+    <!-- Tailwind CSS for high quality layout -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen font-sans flex flex-col">
+
+    <!-- Header -->
+    <header class="border-b border-slate-800 bg-slate-950/80 backdrop-blur sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="bg-red-600 p-2 rounded-lg text-white shadow-lg shadow-red-600/30">
+                    <i data-lucide="music" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight">SoundConvert</h1>
+                    <p class="text-xs text-slate-400">Scan metadata & generate YouTube queries</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-4">
+                <span class="text-xs bg-slate-800 px-3 py-1.5 rounded-full border border-slate-700 flex items-center gap-1.5 text-emerald-400">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    Flask Server Active
+                </span>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
+        
+        <!-- Controls Column -->
+        <section class="lg:col-span-4 space-y-6">
+            <!-- Scan Selection Card -->
+            <div class="bg-slate-950 p-6 rounded-2xl border border-slate-800 shadow-xl">
+                <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <i data-lucide="folder-search" class="text-red-500"></i> Upload files
+                </h2>
+
+                <!-- Tab Content 2: Web Uploader -->
+                <div id="panel-upload" class="space-y-4">
+                    <p class="text-xs text-slate-400">
+                        Select a folder or multiple files to process inside the web app.
+                    </p>
+                    <div class="border-2 border-dashed border-slate-700 rounded-xl p-6 text-center hover:border-red-500 transition cursor-pointer relative" id="drop-zone">
+                        <input type="file" id="file-uploader" multiple webkitdirectory directory class="absolute inset-0 opacity-0 cursor-pointer">
+                        <i data-lucide="upload-cloud" class="w-10 h-10 text-slate-500 mx-auto mb-2"></i>
+                        <span class="text-sm block font-medium">Select Folder / Files</span>
+                        <span class="text-xs text-slate-500 mt-1 block">Supports MP3, FLAC, WAV, M4A</span>
+                    </div>
+                    <div id="selected-files-count" class="text-xs text-slate-400 text-center hidden"></div>
+                    <button id="btn-upload-scan" class="w-full bg-red-600 hover:bg-red-500 text-white py-2.5 px-4 rounded-lg font-medium transition flex items-center justify-center gap-2 hidden">
+                        <i data-lucide="upload" class="w-4 h-4"></i> Upload & Analyze
+                    </button>
+                </div>
+            </div>
+
+            <!-- YouTube Action Card -->
+            <div class="bg-slate-950 p-6 rounded-2xl border border-slate-800 shadow-xl">
+                <h2 class="text-lg font-semibold mb-2 flex items-center gap-2">
+                    <i data-lucide="youtube" class="text-red-500"></i> YouTube Generation
+                </h2>
+                <p class="text-xs text-slate-400 mb-4">
+                    Once you confirm your parsed list, you can prepare it to auto-generate a playlist.
+                </p>
+                <div class="space-y-3">
+                    <button onclick="exportJSON()" class="w-full bg-slate-800 hover:bg-slate-700 text-white py-2.5 px-4 rounded-lg text-sm font-medium transition flex items-center justify-center gap-2">
+                        <i data-lucide="download" class="w-4 h-4"></i> Export Queries (JSON)
+                    </button>
+                    <button id="create-playlist-btn" class="w-full bg-gradient-to-r from-red-600 to-amber-600 hover:opacity-90 text-white py-2.5 px-4 rounded-lg text-sm font-medium transition flex items-center justify-center gap-2">
+                        <i data-lucide="plus-circle" class="w-4 h-4"></i> Create YouTube Playlist
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Main Display Column -->
+        <section class="lg:col-span-8 flex flex-col">
+            <div class="bg-slate-950 rounded-2xl border border-slate-800 shadow-xl flex-grow flex flex-col overflow-hidden">
+                
+                <!-- Table Controls / Info -->
+                <div class="p-6 border-b border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                        <h3 class="text-lg font-semibold">Analyzed Tracks</h3>
+                        <p class="text-xs text-slate-400">Edit queries to refine what YouTube searches for</p>
+                    </div>
+                    <div id="stats-counter" class="flex gap-4 text-xs font-semibold text-slate-400 bg-slate-900 px-4 py-2 rounded-xl">
+                        <span>Tracks: <strong id="stat-count" class="text-red-500">0</strong></span>
+                        <span>With Tags: <strong id="stat-tagged" class="text-emerald-500">0</strong></span>
+                    </div>
+                </div>
+
+                <!-- Table Content Container -->
+                <div class="flex-grow overflow-y-auto max-h-[550px] p-4">
+                    
+                    <!-- Alert Message -->
+                    <div id="status-alert" class="hidden mb-4 p-4 rounded-xl border flex items-center gap-3 text-sm"></div>
+
+                    <!-- Empty State -->
+                    <div id="empty-state" class="py-20 text-center space-y-4">
+                        <div class="w-16 h-16 bg-slate-900 border border-slate-800 text-slate-600 rounded-full flex items-center justify-center mx-auto">
+                            <i data-lucide="music-4" class="w-8 h-8"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-medium text-slate-300">No tracks scanned yet</h4>
+                            <p class="text-xs text-slate-500 max-w-sm mx-auto mt-1">Specify a local path on the left panel or select a file collection to start parsing metadata tags.</p>
+                        </div>
+                    </div>
+
+                    <!-- Main Table -->
+                    <table id="track-table" class="w-full text-left border-collapse hidden">
+                        <thead>
+                            <tr class="border-b border-slate-800 text-xs font-semibold uppercase text-slate-400 tracking-wider">
+                                <th class="pb-3 pl-2 w-10">Use</th>
+                                <th class="pb-3 pl-2">Format</th>
+                                <th class="pb-3">Raw File details</th>
+                                <th class="pb-3 pr-2">YouTube Search Query (Editable)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="track-rows" class="divide-y divide-slate-800 text-sm">
+                            <!-- Dynamic Row Injection -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Modal Notification -->
+    <div id="modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm hidden flex items-center justify-center z-50 p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+            <h3 id="modal-title" class="text-lg font-bold text-white mb-2">Notice</h3>
+            <p id="modal-desc" class="text-sm text-slate-400 mb-6"></p>
+            <button onclick="closeModal()" class="w-full bg-slate-800 hover:bg-slate-700 text-white font-medium py-2 rounded-lg text-sm transition">
+                Close
+            </button>
+        </div>
+    </div>
+
+    <script type="module" src="{{ url_for('static', filename='main.js') }}"></script>
+</body>
+</html>
